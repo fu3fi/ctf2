@@ -1,0 +1,93 @@
+<html>
+  <head>
+    <link href="https://vjs.zencdn.net/7.11.4/video-js.css" rel="stylesheet" />
+    <style>
+    	.wrapper {
+		  display: grid;
+		  grid-template-columns: 1fr 1fr;
+		}
+    </style>
+  </head>
+  <body>
+	<div class="wrapper">
+		
+	</div>
+
+    
+
+    <script src="https://vjs.zencdn.net/7.11.4/video.min.js"></script>
+    
+    <script>
+        let ip = 'http://127.0.0.1:5555';
+        let hack_video_path = "videos/hack.mp4";
+
+        let manage_video = async function(data, video_cursor) {
+            let current_time = data.current_time;
+            let state = data.state;
+
+            if (state) {
+                video_cursor['cursor'].pause();
+                video_cursor['cursor'].src(video_cursor.path);
+                video_cursor['cursor'].currentTime(current_time);
+                video_cursor['cursor'].load();
+                video_cursor['cursor'].play();
+            } else {
+                video_cursor['cursor'].pause();
+                video_cursor['cursor'].src(hack_video_path);
+                video_cursor['cursor'].load();
+                video_cursor['cursor'].play();
+            }
+
+            video_cursor['state'] = state;
+        }
+
+        let generateVideoStuff = async function(videos_metadata, class_name) {
+            let video = "";
+            for (let metadata of videos_metadata) {
+                video = document.createElement("video");
+                video.id = metadata.name;
+                video.width = 'auto';
+                video.height = 'auto';
+                video.style = "width:100% !important; height:auto !important";
+                document.getElementsByClassName(class_name)[0].appendChild(video);
+            }
+            
+        }
+
+        let getMetadata = async function(url) {
+            let videos_metadata = await fetch(url);
+            videos_metadata = await videos_metadata.json();
+            videos_metadata = Object.values(videos_metadata);
+            return videos_metadata; 
+        }
+
+        let main = async function() {
+            let videos_metadata = await getMetadata(`${ip}/getVideoList`);
+            await generateVideoStuff(videos_metadata, "wrapper");
+            
+            let video_cursors = [];
+            for (let video_metadata of videos_metadata) {
+                video = videojs(video_metadata.name);
+                video.controls(false);
+                video.loop(true);
+                video_cursors.push({'cursor': video, 'state': 2, 'path': video_metadata.path});
+            }
+
+            let socket = new WebSocket("ws://127.0.0.1:3000");
+
+            socket.onmessage = function(videos) {
+                Object.values(JSON.parse(videos.data)).forEach(
+                    function(fetch_video, i) {
+                        if (fetch_video.state != video_cursors[i].state) {
+                            manage_video(fetch_video, video_cursors[i]);
+                        }
+                    }
+                )
+            }
+        }
+
+        main();
+        
+    </script>
+  </body>
+<html>

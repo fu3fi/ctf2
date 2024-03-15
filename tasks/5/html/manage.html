@@ -1,0 +1,94 @@
+<html>
+    <head>
+        <style>
+            #console{
+                display: none; 
+            }
+        </style>
+    </head>
+    <body>
+        <div>
+            <form>
+                <b>Выберите камеру</b><br><br>
+                <select id="camera"></select>
+                <p>
+                    <b>Пароль</b><br><br>
+                    <input type="text" size="40" id='password'>
+                </p>
+                <input type="button" value='Войти' onclick="checkPassword()">
+                <p id='info'></p>
+                <p id='console'>
+                    <b>Консоль</b><br><br>
+                    <input type="text" id='new_password'>
+                    <input type="button" value='Сменить пароль' onclick="changePassword()"><br><br>
+                    <input type="button" value='Выключить камеру' onclick="changeState(0)"><br><br>
+                    <input type="button" value='Включить камеру' onclick="changeState(1)">
+                </p>
+            </form>
+        </div>
+
+        
+        <script>
+            let ip = 'http://127.0.0.1:5555';
+
+            let generateCamerasStuff = async function(countCameras, class_name) {
+                let option = "";
+                for (let i = 1; i <= countCameras; i++) {
+                    option = document.createElement("option");
+                    option.value = i;
+                    option.text = i;
+                    document.getElementById(class_name).appendChild(option);
+                }
+            };
+
+            let getCountCameras = async function(url) {
+                let cameras = await fetch(url);
+                cameras = await cameras.json();
+                cameras = Object.values(cameras);
+                return cameras.length; 
+            };
+
+            let generateCameraManage = async function() {
+                let manage = document.getElementById('console');
+                let result = document.createElement("p");
+                if (window.token != "") {
+                    document.getElementById('info').innerHTML = 'Вход выполнен успешно';
+                    document.getElementById('console').style.display = 'inline';
+                } else {
+                    document.getElementById('info').innerHTML = 'Ошибка доступа';
+                }
+            };
+
+            let checkPassword = async function() {
+                let password = document.getElementById('password').value;
+                let camera_id = document.getElementById('camera').selectedIndex;
+                window.token = await fetch(`${ip}/check?password=${password}&camera_id=${camera_id}`);
+                window.token = await window.token.text();
+                generateCameraManage();
+            };
+
+            let changeState = async function(state) {
+                let camera_id = document.getElementById('camera').selectedIndex;
+                if (state == 1) {
+                    fetch(`${ip}/play?token=${window.token}&id=${camera_id}`);
+                } else {
+                    fetch(`${ip}/stop?token=${window.token}&id=${camera_id}`);
+                }
+            };
+
+            let changePassword = function() {
+                let new_password = document.getElementById('new_password').value;
+                let camera_id = document.getElementById('camera').selectedIndex;
+                fetch(`${ip}/changePassword?token=${window.token}&id=${camera_id}&new_password=${new_password}`);
+            }
+
+            let main = async function() {
+                let countCameras = await getCountCameras(`${ip}/getVideoList`);
+                generateCamerasStuff(countCameras, "camera");
+            };
+
+            main();
+            
+        </script>
+    </body>
+<html>
